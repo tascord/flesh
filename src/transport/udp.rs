@@ -1,12 +1,14 @@
 use {
-    crate::{events::EventTarget, mesh::resolving::Resolver, transport::Transport},
+    crate::{events::EventTarget, resolution::resolver::Resolver, transport::Transport},
     async_trait::async_trait,
+    socket2::{Domain, Protocol, SockAddr, Socket, Type},
     std::{net::SocketAddr, ops::Deref},
     tokio::{
         net::UdpSocket,
         select, spawn,
         sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
+    tracing::debug,
 };
 
 pub struct UdpTransport {
@@ -21,43 +23,18 @@ impl Deref for UdpTransport {
     fn deref(&self) -> &Self::Target { &self.target }
 }
 
-async fn inner(socket: SocketAddr, mut rx: UnboundedReceiver<Vec<u8>>, tx: EventTarget<Vec<u8>>) -> std::io::Result<()> {
-    let udp_std = std::net::UdpSocket::bind(socket)?;
-    let udp_tok = UdpSocket::from_std(udp_std)?;
-
-    let mut buf = vec![0; 1024];
-
-    loop {
-        select! {
-            res = udp_tok.recv_from(&mut buf) => {
-                if let Ok((bytes, _)) = res {
-                    buf.truncate(bytes);
-                    tx.emit(buf.clone());
-                }
-            },
-
-            res = rx.recv() => {
-                if let Some(data) = res {
-                    let _ = udp_tok.send(&data).await;
-                }
-            }
-        };
-    }
-}
-
-#[async_trait]
-impl Transport for UdpTransport {
-    fn new(socket: SocketAddr) -> std::io::Result<Self> {
+impl UdpTransport {
+    pub fn new(bind_addr: SocketAddr) -> std::io::Result<Self> {
         let ev = EventTarget::new();
 
         let (o_tx, i_rx) = unbounded_channel();
-        spawn(inner(socket, i_rx, ev.clone()));
+        spawn(Self::inner(bind_addr, i_rx, ev.clone()));
 
         Ok(Self {
             resolver: Resolver::new(ev.as_stream(), {
                 let tx = o_tx.clone();
                 move |v| {
-                    let _ = tx.send(v);
+                    let _ = tx.clone().send(v);
                 }
             }),
             tx: o_tx,
@@ -65,6 +42,43 @@ impl Transport for UdpTransport {
         })
     }
 
+    async fn inner(
+        bind_addr: SocketAddr,
+        mut rx: UnboundedReceiver<Vec<u8>>,
+        tx: EventTarget<Vec<u8>>,
+    ) -> std::io::Result<()> {
+        let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+        socket.set_reuse_port(true)?;
+        socket.set_broadcast(true)?;
+        socket.bind(&SockAddr::from(bind_addr))?;
+
+        // Set to non-blocking before handing to Tokio
+        socket.set_nonblocking(true)?;
+        let udp_tok = UdpSocket::from_std(socket.into())?;
+        let mut buf = vec![0; 1024];
+
+        debug!("Setup TCP socket, 1024b buffer allocated.");
+
+        loop {
+            select! {
+                res = udp_tok.recv_from(&mut buf) => {
+                    if let Ok((bytes, _sender_addr)) = res {
+                        buf.truncate(bytes);
+                        tx.emit(buf.clone());
+                    }
+                },
+                res = rx.recv() => {
+                    if let Some(data) = res {
+                        let _ = udp_tok.send_to(&data, &bind_addr).await;
+                    }
+                }
+            };
+        }
+    }
+}
+
+#[async_trait]
+impl Transport for UdpTransport {
     fn resolver(&self) -> &Resolver { &self.resolver }
 
     async fn send(&self, data: &[u8]) { let _ = self.tx.send(data.to_vec()); }

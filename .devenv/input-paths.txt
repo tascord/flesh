@@ -1,0 +1,7 @@
+/home/flora/Projects/flesh/.devenv/flake.json
+/home/flora/Projects/flesh/.devenv.flake.nix
+/home/flora/Projects/flesh/.env
+/home/flora/Projects/flesh/devenv.local.nix
+/home/flora/Projects/flesh/devenv.lock
+/home/flora/Projects/flesh/devenv.nix
+/home/flora/Projects/flesh/devenv.yaml
