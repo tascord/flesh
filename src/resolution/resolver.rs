@@ -228,7 +228,9 @@ impl Resolver {
 impl Deref for Resolver {
     type Target = EventTarget<Message>;
 
-    fn deref(&self) -> &Self::Target { &self.target }
+    fn deref(&self) -> &Self::Target {
+        &self.target
+    }
 }
 
 #[derive(Clone, Debug, bincode::Encode, bincode::Decode)]

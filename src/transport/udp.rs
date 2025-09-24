@@ -1,10 +1,8 @@
-use std::usize;
-
 use {
     crate::{events::EventTarget, resolution::resolver::Resolver, transport::Transport},
     async_trait::async_trait,
     socket2::{Domain, Protocol, SockAddr, Socket, Type},
-    std::{net::SocketAddr, ops::Deref},
+    std::{net::SocketAddr, ops::Deref, usize},
     tokio::{
         net::UdpSocket,
         select, spawn,
@@ -22,7 +20,9 @@ pub struct UdpTransport {
 impl Deref for UdpTransport {
     type Target = EventTarget<Vec<u8>>;
 
-    fn deref(&self) -> &Self::Target { &self.target }
+    fn deref(&self) -> &Self::Target {
+        &self.target
+    }
 }
 
 impl UdpTransport {
@@ -71,8 +71,8 @@ impl UdpTransport {
                     }
                 },
                 res = rx.recv() => {
-                    if let Some(data) = res {
-                        let _ = udp_tok.send_to(&data, &bind_addr).await;
+                    if let Some(data) = res && let Ok(bytes) = udp_tok.send_to(&data, &bind_addr).await {
+                        debug!("Sent {}b", bytes);
                     }
                 }
             };
@@ -82,7 +82,11 @@ impl UdpTransport {
 
 #[async_trait]
 impl Transport for UdpTransport {
-    fn resolver(&self) -> &Resolver { &self.resolver }
+    fn resolver(&self) -> &Resolver {
+        &self.resolver
+    }
 
-    async fn send(&self, data: &[u8]) { let _ = self.tx.send(data.to_vec()); }
+    async fn send(&self, data: &[u8]) {
+        let _ = self.tx.send(data.to_vec());
+    }
 }

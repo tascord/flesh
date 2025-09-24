@@ -70,7 +70,9 @@ impl<T: Debug> EventTarget<T> {
 }
 
 impl<T: Debug> Default for EventTarget<T> {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct Subscription<T: Debug> {
@@ -102,7 +104,9 @@ impl<T: Debug> Subscription<T> {
     }
 
     #[instrument(level = "trace")]
-    pub(crate) fn update(&self, v: Arc<T>) { (self.handler)(v) }
+    pub(crate) fn update(&self, v: Arc<T>) {
+        (self.handler)(v)
+    }
 }
 
 impl<T: Debug> Drop for Subscription<T> {
@@ -137,11 +141,15 @@ where
 impl<T: Debug> Deref for EventStream<T> {
     type Target = UnboundedReceiver<Arc<T>>;
 
-    fn deref(&self) -> &Self::Target { &self.ch }
+    fn deref(&self) -> &Self::Target {
+        &self.ch
+    }
 }
 
 impl<T: Debug> Stream for EventStream<T> {
     type Item = Arc<T>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> { self.ch.poll_recv(cx) }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.ch.poll_recv(cx)
+    }
 }

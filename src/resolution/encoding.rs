@@ -100,11 +100,17 @@ impl Message {
         self.serialize()
     }
 
-    pub fn ok(&self) -> bool { self.status == 0 }
+    pub fn ok(&self) -> bool {
+        self.status == 0
+    }
 
-    pub fn headers(&self) -> &HashMap<String, Vec<u8>> { &self.headers }
+    pub fn headers(&self) -> &HashMap<String, Vec<u8>> {
+        &self.headers
+    }
 
-    pub fn body(&self) -> &Vec<u8> { &self.body }
+    pub fn body(&self) -> &Vec<u8> {
+        &self.body
+    }
 
     pub fn encrypt_body(mut self, target_pub_key: &VerifyingKey) -> Result<Self, MessageDecodeError> {
         // Ensure a target is set
@@ -247,7 +253,9 @@ impl Message {
 }
 
 impl Default for Message {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Error)]
@@ -286,16 +294,24 @@ pub trait Identity {
 }
 
 impl Identity for (Fluid, SigningKey) {
-    fn id(&self) -> Fluid { self.0 }
+    fn id(&self) -> Fluid {
+        self.0
+    }
 
-    fn key(&self) -> &SigningKey { &self.1 }
+    fn key(&self) -> &SigningKey {
+        &self.1
+    }
 }
 
 impl<T> Identity for T
 where
     T: Transport,
 {
-    fn id(&self) -> Fluid { self.resolver().id }
+    fn id(&self) -> Fluid {
+        self.resolver().id
+    }
 
-    fn key(&self) -> &SigningKey { &self.resolver().key }
+    fn key(&self) -> &SigningKey {
+        &self.resolver().key
+    }
 }
