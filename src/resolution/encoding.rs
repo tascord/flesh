@@ -10,7 +10,7 @@ use {
     rand_core::{OsRng, RngCore},
     std::{collections::HashMap, fmt::Debug},
     thiserror::Error,
-    tracing::{debug, info, instrument},
+    tracing::{debug, instrument},
     x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, StaticSecret},
 };
 

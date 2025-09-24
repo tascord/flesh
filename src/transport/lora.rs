@@ -32,7 +32,7 @@ impl LoraTransport {
         spawn({
             let rx_from_lora_clone = ev.clone();
             async move {
-                Self::inner(device, baud, i_rx, rx_from_lora_clone).await;
+                Self::inner(device, baud, i_rx, rx_from_lora_clone).await.unwrap();
             }
         });
 
@@ -52,28 +52,30 @@ impl LoraTransport {
         })
     }
 
-    async fn inner(device: PathBuf, baud: u32, mut rx: UnboundedReceiver<Vec<u8>>, tx_to_app: EventTarget<Vec<u8>>) {
-        let serial =
-            tokio_serial::new(device.display().to_string(), baud).open_native_async().expect("Failed to open serial port");
+    async fn inner(
+        device: PathBuf,
+        baud: u32,
+        mut rx: UnboundedReceiver<Vec<u8>>,
+        tx_to_app: EventTarget<Vec<u8>>,
+    ) -> io::Result<()> {
+        let serial = tokio_serial::new(device.display().to_string(), baud).open_native_async()?;
         let (mut reader, mut writer) = split(serial);
 
         let mut buf = vec![0; 4096];
         loop {
             select! {
-                // Handle incoming data from the serial port
-                res = reader.read_buf(&mut buf) => {
-                    if let Ok(bytes) = res {
+                res = reader.read(&mut buf) => {
+                    let bytes = res?;
+                    if bytes > 0 {
                         debug!("Got {}b", bytes);
-                        buf.truncate(bytes);
-                        tx_to_app.emit(buf.clone());
-                        buf = vec![0; 4096];
+                        tx_to_app.emit(buf[..bytes].to_vec());
                     }
                 }
 
-                // Handle outgoing messages from our application
                 res = rx.recv() => {
-                    if let Some(data) = res && let Ok(bytes) = writer.write(&data).await {
-                        debug!("Sent {}b", bytes);
+                    if let Some(data) = res {
+                        writer.write_all(&data).await?;
+                        debug!("Sent {}b", data.len());
                     }
                 },
             }
