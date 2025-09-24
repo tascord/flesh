@@ -32,7 +32,7 @@ impl LoraTransport {
         spawn({
             let rx_from_lora_clone = ev.clone();
             async move {
-                Self::inner(device, baud, i_rx, rx_from_lora_clone).await.unwrap();
+                Self::inner(device, baud, i_rx, rx_from_lora_clone).await;
             }
         });
 
@@ -52,30 +52,29 @@ impl LoraTransport {
         })
     }
 
-    async fn inner(
-        device: PathBuf,
-        baud: u32,
-        mut rx: UnboundedReceiver<Vec<u8>>,
-        tx_to_app: EventTarget<Vec<u8>>,
-    ) -> io::Result<()> {
-        let serial = tokio_serial::new(device.display().to_string(), baud).open_native_async()?;
+    async fn inner(device: PathBuf, baud: u32, mut rx: UnboundedReceiver<Vec<u8>>, tx_to_app: EventTarget<Vec<u8>>) {
+        let serial =
+            tokio_serial::new(device.display().to_string(), baud).open_native_async().expect("Failed to open serial port");
         let (mut reader, mut writer) = split(serial);
 
         let mut buf = vec![0; 4096];
         loop {
             select! {
-                res = reader.read(&mut buf) => {
-                    let bytes = res?;
-                    if bytes > 0 {
+                // Handle incoming data from the serial port
+                res = reader.read_buf(&mut buf) => {
+                    println!("{res:?}");
+                    if let Ok(bytes) = res {
                         debug!("Got {}b", bytes);
-                        tx_to_app.emit(buf[..bytes].to_vec());
+                        buf.truncate(bytes);
+                        tx_to_app.emit(buf.clone());
+                        buf = vec![0; 4096];
                     }
                 }
 
+                // Handle outgoing messages from our application
                 res = rx.recv() => {
-                    if let Some(data) = res {
-                        writer.write_all(&data).await?;
-                        debug!("Sent {}b", data.len());
+                    if let Some(data) = res && let Ok(bytes) = writer.write(&data).await {
+                        debug!("Sent {}b", bytes);
                     }
                 },
             }
