@@ -15,22 +15,6 @@ use {
 
 pub const RESOLUTION_TTL_SECS: u64 = 5000;
 pub const ANNOUNCE_DURATION_SECS: u64 = 30;
-pub const SPLIT_MESSAGE_DELAY_SECS: u64 = 1;
-
-#[derive(Clone, Debug, bincode::Encode, bincode::Decode)]
-struct MessagePart {
-    id: Fluid,
-    part: u16,
-    total_parts: u16,
-    data: Vec<u8>,
-}
-
-#[derive(Clone, Debug)]
-struct PartialMessage {
-    parts: HashMap<u16, Vec<u8>>,
-    // total_parts: u16,
-    last_update: Instant,
-}
 
 pub struct Resolver {
     map: Arc<RwLock<HashMap<Fluid, (Instant, VerifyingKey)>>>,
@@ -39,12 +23,11 @@ pub struct Resolver {
     send: Arc<Box<dyn Fn(Vec<u8>) + Send + Sync + 'static>>,
     pub(crate) key: SigningKey,
     pub id: Fluid,
-    max_length: usize,
-    partial_messages: Arc<RwLock<HashMap<Fluid, PartialMessage>>>,
+    queue: Arc<RwLock<Vec<u8>>>,
 }
 
 impl Resolver {
-    pub fn new(stream: EventStream<Vec<u8>>, send: impl Fn(Vec<u8>) + Send + Sync + 'static, max_length: usize) -> Self {
+    pub fn new(stream: EventStream<Vec<u8>>, send: impl Fn(Vec<u8>) + Send + Sync + 'static) -> Self {
         let mut rng = OsRng;
         let secret = SigningKey::generate(&mut rng);
 
@@ -55,11 +38,10 @@ impl Resolver {
             send: Arc::new(Box::new(send)),
             router_target: Default::default(),
             key: secret,
-            max_length,
-            partial_messages: Default::default(),
+            queue: Default::default(),
         };
 
-        info!("Resolver #{} started with max_length: {}.", s.id, max_length);
+        info!("Resolver #{} started.", s.id);
 
         spawn(Self::process_loop(
             s.id,
@@ -67,7 +49,7 @@ impl Resolver {
             stream,
             s.target.clone(),
             s.router_target.clone(),
-            s.partial_messages.clone(),
+            s.queue.clone(),
         ));
         spawn(Self::handle_requests(
             s.id,
@@ -75,13 +57,11 @@ impl Resolver {
             s.router_target.as_stream(),
             s.map.clone(),
             s.send.clone(),
-            s.max_length,
         ));
 
         spawn({
             let send = s.send.clone();
             let id = s.id;
-            let max_length = s.max_length;
             async move {
                 loop {
                     let message = Message::new()
@@ -96,45 +76,13 @@ impl Resolver {
                         .as_bytes()
                         .to_vec();
 
-                    Self::send_with_splitting(&send, message, max_length).await;
+                    send(message);
                     tokio::time::sleep(Duration::from_secs(ANNOUNCE_DURATION_SECS)).await;
                 }
             }
         });
 
-        // Cleanup task for partial messages
-        spawn(Self::cleanup_partial_messages(s.partial_messages.clone()));
-
         s
-    }
-
-    async fn send_with_splitting(
-        send: &Arc<Box<dyn Fn(Vec<u8>) + Send + Sync + 'static>>,
-        data: Vec<u8>,
-        max_length: usize,
-    ) {
-        if data.len() <= max_length {
-            send(data);
-            return;
-        }
-
-        let message_id = Fluid::new();
-        let chunks: Vec<_> = data.chunks(max_length - 100).collect(); // Reserve space for metadata
-        let total_parts = chunks.len() as u16;
-
-        for (i, chunk) in chunks.iter().enumerate() {
-            let part = MessagePart { id: message_id, part: i as u16, total_parts, data: chunk.to_vec() };
-
-            let serialized =
-                bincode::encode_to_vec::<_, Configuration>(InternalMessage::Split(part), Configuration::default())
-                    .unwrap_or_default();
-
-            send(serialized);
-
-            if i < chunks.len() - 1 {
-                tokio::time::sleep(Duration::from_secs(SPLIT_MESSAGE_DELAY_SECS)).await;
-            }
-        }
     }
 
     async fn process_loop(
@@ -143,107 +91,84 @@ impl Resolver {
         e: impl Stream<Item = Arc<Vec<u8>>>,
         target: EventTarget<Message>,
         router_target: EventTarget<RoutingMessage>,
-        partial_messages: Arc<RwLock<HashMap<Fluid, PartialMessage>>>,
+        queue: Arc<RwLock<Vec<u8>>>,
     ) {
-        e.filter_map(|v| {
-            let key = key.clone();
-            let partial_messages = partial_messages.clone();
-
-            async move {
-                if v.is_empty() {
-                    return None;
-                }
-
-                // First try to decode as InternalMessage (for split messages)
-                if let Ok((internal_msg, _)) =
-                    bincode::decode_from_slice::<InternalMessage, Configuration>(&v, Configuration::default())
-                {
-                    match internal_msg {
-                        InternalMessage::Split(part) => {
-                            return Self::handle_message_part(part, partial_messages).await;
-                        }
-                        InternalMessage::Complete(data) => {
-                            // Process as normal message
-                            return Message::deserialize(&String::from_utf8_lossy(&data), &(id, key.clone()))
-                                .inspect_err(|e| tracing::trace!("ERR: {e:?}"))
-                                .ok();
-                        }
-                    }
-                }
-
-                // Fall back to normal message processing
-                Message::deserialize(&String::from_utf8_lossy(&v), &(id, key.clone()))
-                    .inspect_err(|e| tracing::trace!("ERR: {e:?}"))
-                    .ok()
+        e.for_each(async |v| {
+            if v.is_empty() {
+                return;
             }
-        })
-        .for_each(async |v| {
-            target.emit(v.clone()); // TODO: This shouldnt be clone but im busy rn
 
-            if v.ok()
-                && let Ok(message) = bincode::decode_from_slice::<RoutingMessage, Configuration>(
-                    v.body().as_slice(),
-                    Configuration::default(),
-                )
+            // Push bytes to queue
             {
-                router_target.emit(message.0);
+                let mut queue_lock = queue.write().await;
+                queue_lock.extend_from_slice(&v);
             }
+
+            // Process queue for deserializable messages
+            Self::process_queue(&id, &key, &target, &router_target, &queue).await;
         })
         .await;
     }
 
-    async fn handle_message_part(
-        part: MessagePart,
-        partial_messages: Arc<RwLock<HashMap<Fluid, PartialMessage>>>,
-    ) -> Option<Message> {
-        let mut partials = partial_messages.write().await;
+    async fn process_queue(
+        id: &Fluid,
+        key: &SigningKey,
+        target: &EventTarget<Message>,
+        router_target: &EventTarget<RoutingMessage>,
+        queue: &Arc<RwLock<Vec<u8>>>,
+    ) {
+        let mut queue_lock = queue.write().await;
+        let mut pointer = 0;
 
-        let partial = partials.entry(part.id).or_insert(PartialMessage {
-            parts: HashMap::new(),
-            // total_parts: part.total_parts,
-            last_update: Instant::now(),
-        });
+        while pointer < queue_lock.len() {
+            let mut found_valid = false;
 
-        partial.parts.insert(part.part, part.data);
-        partial.last_update = Instant::now();
+            // Try to find a valid message starting from pointer
+            for end in (pointer + 1)..=queue_lock.len() {
+                let range = &queue_lock[pointer..end];
 
-        // Check if we have all parts
-        if partial.parts.len() == part.total_parts as usize {
-            let mut complete_data = Vec::new();
+                // Try to deserialize as Message first
+                if let Ok(message_str) = String::from_utf8(range.to_vec()) {
+                    if let Ok(message) = Message::deserialize(&message_str, &(*id, key.clone())) {
+                        target.emit(message.clone());
 
-            // Reconstruct the message in order
-            for i in 0..part.total_parts {
-                if let Some(data) = partial.parts.get(&i) {
-                    complete_data.extend_from_slice(data);
-                } else {
-                    // Missing part, shouldn't happen but handle gracefully
-                    return None;
+                        // Check if it's also a routing message
+                        if message.ok() {
+                            if let Ok((routing_msg, _)) = bincode::decode_from_slice::<RoutingMessage, Configuration>(
+                                message.body().as_slice(),
+                                Configuration::default(),
+                            ) {
+                                router_target.emit(routing_msg);
+                            }
+                        }
+
+                        // Clear processed bytes
+                        queue_lock.drain(0..end);
+                        pointer = 0;
+                        found_valid = true;
+                        break;
+                    }
+                }
+
+                // Try to deserialize as direct RoutingMessage (bincode)
+                if let Ok((routing_msg, bytes_read)) = bincode::decode_from_slice::<RoutingMessage, Configuration>(
+                    range,
+                    Configuration::default(),
+                ) {
+                    router_target.emit(routing_msg);
+
+                    // Clear processed bytes
+                    let actual_end = pointer + bytes_read;
+                    queue_lock.drain(0..actual_end);
+                    pointer = 0;
+                    found_valid = true;
+                    break;
                 }
             }
 
-            // Remove from partial messages
-            partials.remove(&part.id);
-            drop(partials);
-
-            // Try to deserialize as a normal message
-            // Since we don't have id and key here, we'll wrap it as InternalMessage::Complete
-            // and let the upper level handle it
-            return Some(Message::new().with_body(complete_data));
-        }
-
-        None
-    }
-
-    async fn cleanup_partial_messages(partial_messages: Arc<RwLock<HashMap<Fluid, PartialMessage>>>) {
-        loop {
-            tokio::time::sleep(Duration::from_secs(60)).await;
-
-            let mut partials = partial_messages.write().await;
-            let now = Instant::now();
-
-            partials.retain(|_, partial| {
-                now.duration_since(partial.last_update) < Duration::from_secs(300) // 5 minutes timeout
-            });
+            if !found_valid {
+                pointer += 1;
+            }
         }
     }
 
@@ -253,7 +178,6 @@ impl Resolver {
         e: impl Stream<Item = Arc<RoutingMessage>>,
         map: Arc<RwLock<HashMap<Fluid, (Instant, VerifyingKey)>>>,
         send: Arc<Box<dyn Fn(Vec<u8>) + Send + Sync + 'static>>,
-        max_length: usize,
     ) {
         e.for_each(async |v| match RoutingMessage::clone(&*v) {
             RoutingMessage::Announce(id) => {
@@ -270,7 +194,7 @@ impl Resolver {
                         .as_bytes()
                         .to_vec();
 
-                    Self::send_with_splitting(&send, message, max_length).await;
+                    send(message);
                 }
             }
             RoutingMessage::Request { asking } => {
@@ -304,7 +228,7 @@ impl Resolver {
                     return;
                 };
 
-                Self::send_with_splitting(&send, message, max_length).await;
+                send(message);
             }
             RoutingMessage::Response { giving, is } => {
                 if let Ok(key) = is.as_slice().try_into()
@@ -376,10 +300,4 @@ pub enum RoutingMessage {
     Request { asking: Fluid },
     // Responding that a n id resolves to a Verification Key
     Response { giving: Fluid, is: Vec<u8> },
-}
-
-#[derive(Clone, Debug, bincode::Encode, bincode::Decode)]
-enum InternalMessage {
-    Split(MessagePart),
-    Complete(Vec<u8>),
 }

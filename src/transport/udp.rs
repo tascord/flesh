@@ -39,7 +39,6 @@ impl UdpTransport {
                         let _ = tx.clone().send(v);
                     }
                 },
-                Self::max_length(),
             ),
             target: ev,
             tx: o_tx.clone(),
@@ -97,8 +96,6 @@ impl UdpTransport {
 #[async_trait]
 impl Transport for UdpTransport {
     fn resolver(&self) -> &Resolver { &self.resolver }
-
-    fn max_length() -> usize { 4096 }
 
     async fn send(&self, data: &[u8]) { let _ = self.tx.send(data.to_vec()); }
 }

@@ -45,7 +45,6 @@ impl LoraTransport {
                         let _ = tx.clone().send(v);
                     }
                 },
-                Self::max_length(),
             ),
             target: ev,
             tx: o_tx,
@@ -85,8 +84,6 @@ impl LoraTransport {
 #[async_trait]
 impl Transport for LoraTransport {
     fn resolver(&self) -> &Resolver { &self.resolver }
-
-    fn max_length() -> usize { 4096 }
 
     async fn send(&self, data: &[u8]) { let _ = self.tx.send(data.to_vec()); }
 }
