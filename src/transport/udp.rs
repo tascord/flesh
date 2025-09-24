@@ -1,3 +1,5 @@
+use std::usize;
+
 use {
     crate::{events::EventTarget, resolution::resolver::Resolver, transport::Transport},
     async_trait::async_trait,
@@ -55,7 +57,7 @@ impl UdpTransport {
         // Set to non-blocking before handing to Tokio
         socket.set_nonblocking(true)?;
         let udp_tok = UdpSocket::from_std(socket.into())?;
-        let mut buf = vec![0; 1024];
+        let mut buf = vec![0; 4096];
 
         debug!("Setup TCP socket, 1024b buffer allocated.");
 
@@ -63,6 +65,7 @@ impl UdpTransport {
             select! {
                 res = udp_tok.recv_from(&mut buf) => {
                     if let Ok((bytes, _sender_addr)) = res {
+                        debug!("Got {bytes}b");
                         buf.truncate(bytes);
                         tx.emit(buf.clone());
                     }

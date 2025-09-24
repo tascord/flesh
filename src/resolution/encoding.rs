@@ -1,3 +1,5 @@
+use tracing::info;
+
 use {
     crate::transport::Transport,
     base64::{Engine, engine::general_purpose},
@@ -10,6 +12,7 @@ use {
     rand_core::{OsRng, RngCore},
     std::{collections::HashMap, fmt::Debug},
     thiserror::Error,
+    tracing::{debug, instrument},
     x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, StaticSecret},
 };
 
@@ -76,10 +79,12 @@ impl Message {
         for (k, v) in &self.headers {
             let encoded_value = general_purpose::STANDARD.encode(v);
             out.push_str(&format!("{}:{}\n", k, encoded_value));
+            debug!("Header: {:?}", [k, &encoded_value].to_vec());
         }
 
         out.push('\n');
         out.push_str(&general_purpose::STANDARD.encode(&self.body));
+
         out
     }
 
@@ -142,8 +147,10 @@ impl Message {
         let nonce_bytes = self.headers.get("nonce").ok_or(MessageDecodeError::MissingNonce)?;
 
         // Convert bytes to array for X25519PublicKey::from
-        let ephemeral_key_array: [u8; 32] =
-            ephemeral_key_bytes.as_slice().try_into().map_err(|_| MessageDecodeError::InvalidFormat)?;
+        let ephemeral_key_array: [u8; 32] = ephemeral_key_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| MessageDecodeError::InvalidFormat("Malformed ephemeral key bytes".to_string()))?;
         let ephemeral_public = X25519PublicKey::from(ephemeral_key_array);
 
         // Convert our Ed25519 signing key to X25519 static secret
@@ -167,20 +174,30 @@ impl Message {
         let signature_b64 = self.headers.get("signature").ok_or(MessageDecodeError::InvalidSignature)?;
         let signature_bytes = general_purpose::STANDARD.decode(signature_b64)?;
 
-        let signature = Signature::from_bytes(&signature_bytes.try_into().map_err(|_| MessageDecodeError::InvalidFormat)?);
+        let signature =
+            Signature::from_bytes(&signature_bytes.try_into().map_err(|_| MessageDecodeError::InvalidSignature)?);
         let message = self.serialize_for_signing();
 
         key.verify_strict(message.as_bytes(), &signature).map_err(|_| MessageDecodeError::InvalidSignature)?;
         Ok(())
     }
 
+    #[instrument(level = "trace", skip(me))]
     pub fn deserialize(s: &str, me: &impl Identity) -> Result<Self, MessageDecodeError> {
-        let mut lines = s.lines();
+        let s = s.to_string();
+        let lines = s.lines().collect::<Vec<_>>();
+        // println!("{s} :: {lines:?}");
 
-        let first_line = lines.next().ok_or(MessageDecodeError::InvalidFormat)?;
+        if s.to_string().lines().count() > 3 {
+            println!("IN :: {:?}", s.lines().collect::<Vec<_>>());
+        }
+
+        let mut lines = lines.into_iter();
+
+        let first_line = lines.next().ok_or(MessageDecodeError::InvalidFormat("Missing first line".to_string()))?;
         let mut parts = first_line.splitn(3, ' ');
-        let version_str = parts.next().ok_or(MessageDecodeError::InvalidFormat)?;
-        let status_str = parts.next().ok_or(MessageDecodeError::InvalidFormat)?;
+        let version_str = parts.next().ok_or(MessageDecodeError::InvalidFormat("Missing version".to_string()))?;
+        let status_str = parts.next().ok_or(MessageDecodeError::InvalidFormat("Missing status code".to_string()))?;
 
         let target = parts.find(|p| !p.is_empty());
         if let Some(target) = target
@@ -202,9 +219,12 @@ impl Message {
                     in_headers = false;
                     continue;
                 }
+
                 let mut header_parts = line.splitn(2, ':');
-                let key = header_parts.next().ok_or(MessageDecodeError::InvalidFormat)?.to_string();
-                let value_b64 = header_parts.next().ok_or(MessageDecodeError::InvalidFormat)?;
+                debug!("Header: {:?}", header_parts.clone().collect::<Vec<_>>());
+
+                let key = header_parts.next().ok_or(MessageDecodeError::MalformedHeaders)?.to_string();
+                let value_b64 = header_parts.next().ok_or(MessageDecodeError::MalformedHeaders)?;
                 let value = general_purpose::STANDARD.decode(value_b64)?;
                 headers.insert(key, value);
             } else {
@@ -232,10 +252,12 @@ impl Default for Message {
 
 #[derive(Debug, Error)]
 pub enum MessageDecodeError {
-    #[error("Invalid protocol format")]
-    InvalidFormat,
+    #[error("Invalid protocol format: {0}")]
+    InvalidFormat(String),
     #[error("Invalid version: {0}")]
     InvalidVersion(String),
+    #[error("Malformed headers")]
+    MalformedHeaders,
     #[error("Invalid status: {0}")]
     InvalidStatus(String),
     #[error("Invalid base64 encoding")]

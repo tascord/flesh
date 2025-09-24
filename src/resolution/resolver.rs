@@ -10,10 +10,11 @@ use {
     rand_core::OsRng,
     std::{collections::HashMap, ops::Deref, sync::Arc, time::Duration},
     tokio::{select, spawn, sync::RwLock, time::Instant},
-    tracing::{info, warn},
+    tracing::{debug, info},
 };
 
 pub const RESOLUTION_TTL_SECS: u64 = 5000;
+pub const ANNOUNCE_DURATION_SECS: u64 = 30;
 
 pub struct Resolver {
     map: Arc<RwLock<HashMap<Fluid, (Instant, VerifyingKey)>>>,
@@ -68,7 +69,7 @@ impl Resolver {
                             .to_vec(),
                     );
 
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    tokio::time::sleep(Duration::from_secs(ANNOUNCE_DURATION_SECS)).await;
                 }
             }
         });
@@ -86,9 +87,12 @@ impl Resolver {
         e.filter_map(|v| {
             let key = key.clone();
             async move {
+                if v.is_empty() {
+                    return None;
+                }
+
                 Message::deserialize(&String::from_utf8_lossy(&v), &(id, key.clone()))
-                    .inspect(|m| info!("OK : {m:?}"))
-                    .inspect_err(|e| warn!("ERR: {e:?}"))
+                    .inspect_err(|e| tracing::trace!("ERR: {e:?}"))
                     .ok()
             }
         })

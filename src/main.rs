@@ -1,17 +1,17 @@
-use tracing::level_filters::LevelFilter;
-
 use {
     flesh::{
         resolution::encoding::Message,
         transport::{Transport, udp::UdpTransport},
     },
     futures::StreamExt,
+    serde::{Deserialize, Serialize},
     std::io,
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         select, spawn,
         sync::mpsc::unbounded_channel,
     },
+    tracing::level_filters::LevelFilter,
 };
 
 #[tokio::main]
@@ -21,28 +21,28 @@ pub async fn main() -> io::Result<()> {
     let bind_addr = "127.0.0.1:1234".parse().unwrap();
     let transport = UdpTransport::new(bind_addr)?;
 
-    let (tx_to_send, mut rx_to_send) = unbounded_channel::<Vec<u8>>();
+    let (tx_to_send, mut rx_to_send) = unbounded_channel::<String>();
     spawn(async move {
         let mut reader = BufReader::new(tokio::io::stdin()).lines();
         while let Ok(Some(line)) = reader.next_line().await {
-            let _ = tx_to_send.send(line.into_bytes());
+            let _ = tx_to_send.send(line);
         }
     });
 
-    let mut transport_stream = transport.as_stream();
+    let mut transport_stream = transport.resolver().as_stream();
 
     loop {
         select! {
             res = transport_stream.next() => {
-                if let Some(data) = res && let Ok(msg) = Message::deserialize(&String::from_utf8_lossy(&data), &transport) {
-                    println!("Received message: {}", String::from_utf8_lossy(msg.body()));
+                if let Some(data) = res && let Ok(msg) = serde_json::from_slice::<TextMessage>(data.body()) {
+                    println!("Received message: {}", msg.text);
                 }
             },
 
             res = rx_to_send.recv() => {
-                if let Some(line_data) = res {
+                if let Some(line) = res {
                     let message = Message::new()
-                        .with_body(line_data)
+                        .with_body(serde_json::to_string(&TextMessage{ text: line }).unwrap())
                         .signed(&transport);
 
                     transport.send(message.as_bytes()).await;
@@ -50,4 +50,9 @@ pub async fn main() -> io::Result<()> {
             }
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TextMessage {
+    text: String,
 }
