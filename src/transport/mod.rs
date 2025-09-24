@@ -6,6 +6,7 @@ use {
 };
 
 pub mod udp;
+pub mod lora;
 
 #[async_trait]
 pub trait Transport: Deref<Target = EventTarget<Vec<u8>>> {
@@ -14,5 +15,7 @@ pub trait Transport: Deref<Target = EventTarget<Vec<u8>>> {
     }
 
     fn resolver(&self) -> &Resolver;
+    fn max_length() -> usize;
+    
     async fn send(&self, data: &[u8]);
 }

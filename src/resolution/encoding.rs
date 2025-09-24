@@ -1,5 +1,3 @@
-use tracing::info;
-
 use {
     crate::transport::Transport,
     base64::{Engine, engine::general_purpose},
@@ -12,7 +10,7 @@ use {
     rand_core::{OsRng, RngCore},
     std::{collections::HashMap, fmt::Debug},
     thiserror::Error,
-    tracing::{debug, instrument},
+    tracing::{debug, info, instrument},
     x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, StaticSecret},
 };
 
@@ -79,7 +77,6 @@ impl Message {
         for (k, v) in &self.headers {
             let encoded_value = general_purpose::STANDARD.encode(v);
             out.push_str(&format!("{}:{}\n", k, encoded_value));
-            debug!("Header: {:?}", [k, &encoded_value].to_vec());
         }
 
         out.push('\n');
@@ -100,17 +97,11 @@ impl Message {
         self.serialize()
     }
 
-    pub fn ok(&self) -> bool {
-        self.status == 0
-    }
+    pub fn ok(&self) -> bool { self.status == 0 }
 
-    pub fn headers(&self) -> &HashMap<String, Vec<u8>> {
-        &self.headers
-    }
+    pub fn headers(&self) -> &HashMap<String, Vec<u8>> { &self.headers }
 
-    pub fn body(&self) -> &Vec<u8> {
-        &self.body
-    }
+    pub fn body(&self) -> &Vec<u8> { &self.body }
 
     pub fn encrypt_body(mut self, target_pub_key: &VerifyingKey) -> Result<Self, MessageDecodeError> {
         // Ensure a target is set
@@ -192,11 +183,6 @@ impl Message {
     pub fn deserialize(s: &str, me: &impl Identity) -> Result<Self, MessageDecodeError> {
         let s = s.to_string();
         let lines = s.lines().collect::<Vec<_>>();
-        // println!("{s} :: {lines:?}");
-
-        if s.to_string().lines().count() > 3 {
-            println!("IN :: {:?}", s.lines().collect::<Vec<_>>());
-        }
 
         let mut lines = lines.into_iter();
 
@@ -253,9 +239,7 @@ impl Message {
 }
 
 impl Default for Message {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[derive(Debug, Error)]
@@ -294,24 +278,16 @@ pub trait Identity {
 }
 
 impl Identity for (Fluid, SigningKey) {
-    fn id(&self) -> Fluid {
-        self.0
-    }
+    fn id(&self) -> Fluid { self.0 }
 
-    fn key(&self) -> &SigningKey {
-        &self.1
-    }
+    fn key(&self) -> &SigningKey { &self.1 }
 }
 
 impl<T> Identity for T
 where
     T: Transport,
 {
-    fn id(&self) -> Fluid {
-        self.resolver().id
-    }
+    fn id(&self) -> Fluid { self.resolver().id }
 
-    fn key(&self) -> &SigningKey {
-        &self.resolver().key
-    }
+    fn key(&self) -> &SigningKey { &self.resolver().key }
 }

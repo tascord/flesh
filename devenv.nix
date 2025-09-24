@@ -8,7 +8,10 @@
 
 {
   env.GREET = "FLESH";
-  packages = [ pkgs.lld ];
+  packages = [
+    pkgs.lld
+    pkgs.libudev-zero
+  ];
 
   languages.rust = {
     enable = true;

@@ -23,3 +23,13 @@ tokio-tungstenite = "0.27.0"
 socket2 = "0.6.0"
 tracing-subscriber = "0.3.20"
 tracing = "0.1.41"
+lora-phy = "3.0.1"
+anyhow = "1.0.100"
+serialport = "4.7.3"
+atat = { version = "0.24.1", features = ["heapless", "log"] }
+atat_derive = "0.24.1"
+heapless = "0.9.1"
+nb = "1.1.0"
+tokio-serial = "5.4.5"
+embedded-io-adapters = { version = "0.6.2", features = ["tokio-1"] }
+static_cell = "2.1.1"

@@ -1,11 +1,11 @@
 use {
     flesh::{
         resolution::encoding::Message,
-        transport::{Transport, udp::UdpTransport},
+        transport::{Transport, lora::LoraTransport},
     },
     futures::StreamExt,
     serde::{Deserialize, Serialize},
-    std::io,
+    std::{io, path::Path},
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         select, spawn,
@@ -18,8 +18,10 @@ use {
 pub async fn main() -> io::Result<()> {
     tracing_subscriber::fmt().pretty().with_thread_names(true).with_max_level(LevelFilter::TRACE).init();
 
-    let bind_addr = "127.0.0.1:1234".parse().unwrap();
-    let transport = UdpTransport::new(bind_addr)?;
+    let transport = LoraTransport::new(
+        Path::new("/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0").to_path_buf(),
+        9600,
+    )?;
 
     let (tx_to_send, mut rx_to_send) = unbounded_channel::<String>();
     spawn(async move {
