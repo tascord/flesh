@@ -33,7 +33,7 @@ pub struct Lora {
 }
 
 impl Lora {
-    pub async fn new(device: PathBuf, baud: u32, settings: LoraSettings) -> io::Result<Self> {
+    pub async fn new(device: PathBuf, baud: u32, settings: LoraSettings, configure: bool) -> io::Result<Self> {
         debug!("Initializing LoRa with settings: {:?}", settings);
 
         let serial = tokio_serial::new(device.display().to_string(), baud).open_native_async()?;
@@ -49,7 +49,10 @@ impl Lora {
             .new_codec();
 
         let mut writer = FramedWrite::new(writer, data_codec);
-        Self::configure(settings, &mut writer, &mut reader).await?;
+        if configure {
+            Self::configure(settings, &mut writer, &mut reader).await?;
+        }
+        
         let reader = reader.into_inner();
 
         let (writer, reader) = Self::inner(reader, writer);

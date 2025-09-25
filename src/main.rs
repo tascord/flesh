@@ -49,6 +49,7 @@ impl App {
                 .to_path_buf(),
             9600,
             LoraSettings { spread_factor: 7, frequency_hz: 915_000_000, bandwidth_khz: 125 },
+            false, // My module requires being setup physically
         )
         .await
         .unwrap();
