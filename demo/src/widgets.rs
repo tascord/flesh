@@ -49,7 +49,7 @@ impl Widget for MessageList {
 
         let messages = self.0.iter().rev().take(area.height.saturating_sub(2).into()).collect_vec();
         let lay = Layout::new(Direction::Vertical, repeat_n(Constraint::Length(1), messages.len()))
-            .split(area.inner(Margin::new(0, 2)));
+            .split(area.inner(Margin::new(1, 1)));
 
         lay.into_iter().zip(messages.into_iter().rev()).for_each(|(a, b)| {
             Into::<Line>::into(b.clone()).render(*a, buf);
