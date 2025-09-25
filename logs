@@ -1,0 +1,15 @@
+  2025-09-25T06:56:22.710225Z DEBUG flesh::modes::lora: Initializing LoRa with settings: LoraSettings { spread_factor: 7, frequency_hz: 915000000, bandwidth_khz: 125 }
+    at src/modes/lora.rs:37 on main
+
+  2025-09-25T06:56:22.710302Z DEBUG mio_serial: opening serial port in synchronous blocking mode
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-serial-5.0.6/src/lib.rs:97 on main
+
+  2025-09-25T06:56:22.711195Z DEBUG mio_serial: setting O_NONBLOCK for /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-serial-5.0.6/src/lib.rs:529 on main
+
+  2025-09-25T06:56:22.711246Z TRACE mio::poll: registering event source with poller: token=Token(105722761944192), interests=READABLE | WRITABLE
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs:571 on main
+
+  2025-09-25T06:56:27.723322Z TRACE mio::poll: deregistering event source from poller
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs:702 on main
+

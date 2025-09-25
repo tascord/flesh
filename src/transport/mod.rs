@@ -1,19 +1,13 @@
-use {
-    crate::{events::EventTarget, resolution::resolver::Resolver},
-    async_trait::async_trait,
-    futures::StreamExt,
-    std::{io, ops::Deref, sync::Arc},
-};
+use {async_trait::async_trait, std::io};
 
-pub mod lora;
-pub mod udp;
+pub mod encoding;
+pub mod network;
 
 #[async_trait]
-pub trait Transport: Deref<Target = EventTarget<Vec<u8>>> {
-    async fn receive(&self) -> io::Result<Arc<Vec<u8>>> {
-        self.as_stream().next().await.ok_or(std::io::Error::new(io::ErrorKind::Interrupted, "Stream closed"))
-    }
+pub trait PacketTransport: Send + Sync {
+    /// Sends a single data packet.
+    async fn send(&self, data: &[u8]) -> io::Result<()>;
 
-    fn resolver(&self) -> &Resolver;
-    async fn send(&self, data: &[u8]);
+    /// Receives a single data packet.
+    async fn recv(&mut self) -> io::Result<Vec<u8>>;
 }
