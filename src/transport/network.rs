@@ -19,7 +19,7 @@ use {
         time::{Duration, Instant},
     },
     tokio::{select, spawn, sync::RwLock},
-    tracing::{error, info},
+    tracing::{debug, error, info},
 };
 
 pub const RESOLUTION_TTL_SECS: u64 = 5000;
@@ -82,6 +82,8 @@ impl<T: PacketTransport + Clone + 'static> Network<T> {
             match transport.recv().await {
                 Ok(data) => {
                     if let Ok(message) = FLESHMessage::deserialize(&data) {
+                        debug!("New message: {message:?}");
+                        debug!("Body: {:?}", String::from_utf8_lossy(&message.body));
                         match message.message_type {
                             MessageType::Routing(r) => router_target.emit(r),
                             MessageType::Data { .. } => target.emit(message),

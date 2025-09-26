@@ -149,12 +149,7 @@ impl Lora {
     async fn recv(reader: &mut FramedRead<ReadHalf<SerialStream>, LengthDelimitedCodec>) -> io::Result<Vec<u8>> {
         match reader.next().await {
             Some(Ok(frame)) => {
-                let hex_dump = frame.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
-
-                debug!("Received frame with {} bytes", frame.len());
-                debug!("Hex: {}", hex_dump);
-                debug!("String: {:?}", String::from_utf8_lossy(&frame));
-
+                debug!("Received frame with {} bytes:\n{:?}", frame.len(), String::from_utf8_lossy(&frame));
                 Ok(frame.to_vec())
             }
             Some(Err(e)) => {

@@ -1,7 +1,6 @@
 use {
     crate::widgets::{MessageList, Textbox},
     anyhow::{Context, Result},
-    bincode::config::Configuration,
     crossterm::{
         event::{self, Event, KeyCode, KeyModifiers},
         execute,
@@ -29,7 +28,7 @@ use {
         spawn,
         sync::mpsc::{UnboundedSender, unbounded_channel},
     },
-    tracing_subscriber::filter::LevelFilter,
+    tracing_subscriber::{field::debug, filter::LevelFilter},
 };
 
 mod widgets;
@@ -80,7 +79,7 @@ impl App {
                 .and_then(|v| {
                     Command::new("hostname")
                         .output()
-                        .map(|h| format!("{v}@{}", String::from_utf8_lossy(&h.stdout).to_string()))
+                        .map(|h| format!("{v}@{}", String::from_utf8_lossy(&h.stdout).to_string().trim()))
                         .ok()
                 })
                 .unwrap_or(Fluid::new().to_string()),
@@ -100,7 +99,6 @@ impl App {
                 let msgs = msgs.clone();
                 Network::new(lora)
                     .as_stream()
-                    .inspect(|v| println!("{v:?}"))
                     .filter_map(|m| async move { serde_json::from_slice(&m.body).ok() })
                     .for_each({
                         let msgs = msgs.clone();
@@ -115,6 +113,7 @@ impl App {
                             }
                         }
                     })
+                    .await
             }
         });
 
