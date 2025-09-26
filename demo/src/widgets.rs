@@ -12,7 +12,7 @@ use {
 
 pub struct MessageList(Vec<Message>);
 impl MessageList {
-    pub fn new(m: Vec<Message>) -> Self { Self(m) }
+    pub fn new(m: Vec<Message>) -> Self { Self(m) } 
 }
 
 const COLOURS: &[Color] =

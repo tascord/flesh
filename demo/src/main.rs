@@ -1,7 +1,7 @@
 use {
     crate::widgets::{MessageList, Textbox},
     anyhow::{Context, Result},
-    bincode::{Decode, Encode, config::Configuration},
+    bincode::config::Configuration,
     crossterm::{
         event::{self, Event, KeyCode, KeyModifiers},
         execute,
@@ -16,6 +16,7 @@ use {
     futures_signals::signal::Mutable,
     itertools::Itertools,
     ratatui::prelude::*,
+    serde::{Deserialize, Serialize},
     std::{
         env,
         io::{self, Stdout},
@@ -30,7 +31,7 @@ use {
 
 mod widgets;
 
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Message {
     Text { author: String, content: String },
     Join(String),
@@ -77,33 +78,26 @@ impl App {
             let msgs = msgs.clone();
             async move {
                 let msgs = msgs.clone();
-                network
-                    .as_stream()
-                    .filter_map(|m| async move {
-                        bincode::decode_from_slice::<Message, Configuration>(&m.body, Configuration::default())
-                            .map(|v| v.0)
-                            .ok()
-                    })
-                    .for_each({
+                network.as_stream().filter_map(|m| async move { serde_json::from_slice(&m.body).ok() }).for_each({
+                    let msgs = msgs.clone();
+                    move |m| {
                         let msgs = msgs.clone();
-                        move |m| {
-                            let msgs = msgs.clone();
-                            async move {
-                                msgs.clone().set({
-                                    let mut l = msgs.get_cloned();
-                                    l.push(m);
-                                    l
-                                })
-                            }
+                        async move {
+                            msgs.clone().set({
+                                let mut l = msgs.get_cloned();
+                                l.push(m);
+                                l
+                            })
                         }
-                    })
+                    }
+                })
             }
         });
 
         spawn(async move {
             while let Some(msg) = rx.recv().await {
                 let encoded = FLESHMessage::new(flesh::transport::encoding::MessageType::Data { status: 100 })
-                    .with_body(bincode::encode_to_vec::<_, Configuration>(msg.clone(), Configuration::default()).unwrap());
+                    .with_body(serde_json::to_vec(&msg).unwrap());
 
                 msgs.clone().set({
                     let mut l = msgs.get_cloned();
