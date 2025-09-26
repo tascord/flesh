@@ -19,14 +19,17 @@ use {
     serde::{Deserialize, Serialize},
     std::{
         env,
+        fs::OpenOptions,
         io::{self, Stdout},
         path::Path,
+        process::Command,
         time::Duration,
     },
     tokio::{
         spawn,
         sync::mpsc::{UnboundedSender, unbounded_channel},
     },
+    tracing_subscriber::filter::LevelFilter,
 };
 
 mod widgets;
@@ -47,6 +50,15 @@ pub struct App {
 
 impl App {
     pub async fn new() -> Self {
+        tracing_subscriber::fmt()
+            .with_thread_names(true)
+            .with_level(true)
+            .with_max_level(LevelFilter::TRACE)
+            .with_writer(OpenOptions::new().create(true).write(true).truncate(true).open("./demo.log").unwrap())
+            .pretty()
+            .with_ansi(false)
+            .init();
+
         let lora = Lora::new(
             Path::new(&env::var("LORA").expect("No LoRa env")).to_path_buf(),
             9600,
@@ -63,7 +75,15 @@ impl App {
             send: Self::lora(lora, msgs.clone()),
             textbox_state: Default::default(),
             should_quit: false,
-            name: std::env::var("USER").unwrap_or(Fluid::new().to_string()),
+            name: std::env::var("USER")
+                .ok()
+                .and_then(|v| {
+                    Command::new("hostname")
+                        .output()
+                        .map(|h| format!("{v}@{}", String::from_utf8_lossy(&h.stdout).to_string()))
+                        .ok()
+                })
+                .unwrap_or(Fluid::new().to_string()),
         };
 
         s.send.send(Message::Join(s.name.to_string())).unwrap();
@@ -71,26 +91,30 @@ impl App {
     }
 
     pub fn lora(lora: Lora, msgs: Mutable<Vec<Message>>) -> UnboundedSender<Message> {
-        let network = Network::new(lora.clone());
         let (tx, mut rx) = unbounded_channel::<Message>();
 
         spawn({
             let msgs = msgs.clone();
+            let lora = lora.clone();
             async move {
                 let msgs = msgs.clone();
-                network.as_stream().filter_map(|m| async move { serde_json::from_slice(&m.body).ok() }).for_each({
-                    let msgs = msgs.clone();
-                    move |m| {
+                Network::new(lora)
+                    .as_stream()
+                    .inspect(|v| println!("{v:?}"))
+                    .filter_map(|m| async move { serde_json::from_slice(&m.body).ok() })
+                    .for_each({
                         let msgs = msgs.clone();
-                        async move {
-                            msgs.clone().set({
-                                let mut l = msgs.get_cloned();
-                                l.push(m);
-                                l
-                            })
+                        move |m| {
+                            let msgs = msgs.clone();
+                            async move {
+                                msgs.clone().set({
+                                    let mut l = msgs.get_cloned();
+                                    l.push(m);
+                                    l
+                                })
+                            }
                         }
-                    }
-                })
+                    })
             }
         });
 

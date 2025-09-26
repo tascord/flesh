@@ -1,0 +1,306 @@
+  2025-09-26T05:01:36.416199Z DEBUG flesh::modes::lora: Initializing LoRa with settings: LoraSettings { spread_factor: 9, frequency_hz: 915000000, bandwidth_khz: 10 }
+    at /home/flora/Projects/flesh/src/modes/lora.rs:36 on main
+
+  2025-09-26T05:01:36.416316Z DEBUG mio_serial: opening serial port in synchronous blocking mode
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-serial-5.0.6/src/lib.rs:97 on main
+
+  2025-09-26T05:01:36.417616Z DEBUG mio_serial: setting O_NONBLOCK for /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-serial-5.0.6/src/lib.rs:529 on main
+
+  2025-09-26T05:01:36.417685Z TRACE mio::poll: registering event source with poller: token=Token(93876693558400), interests=READABLE | WRITABLE
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs:571 on main
+
+  2025-09-26T05:01:36.418255Z  INFO flesh::transport::network: Resolver #gentle-topic-correctly-store started.
+    at /home/flora/Projects/flesh/src/transport/network.rs:54 on tokio-runtime-worker
+
+  2025-09-26T05:01:36.433729Z TRACE mio::poll: registering event source with poller: token=Token(0), interests=READABLE
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs:571 on main
+
+  2025-09-26T05:01:36.433769Z DEBUG flesh::modes::lora: Sending frame with length: 43
+    at /home/flora/Projects/flesh/src/modes/lora.rs:144 on tokio-runtime-worker
+
+  2025-09-26T05:01:36.434139Z TRACE mio::poll: registering event source with poller: token=Token(1), interests=READABLE
+    at /home/flora/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs:571 on main
+
+  2025-09-26T05:01:40.321606Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 1
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.324453Z DEBUG flesh::modes::lora: Read 3 bytes. Buffer size: 4
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.326572Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 6
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.328745Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 8
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.331898Z DEBUG flesh::modes::lora: Read 3 bytes. Buffer size: 11
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.334036Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 13
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.336069Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 15
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.338103Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 17
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.340145Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 19
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.342035Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 21
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.344196Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 23
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.346201Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 25
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.348332Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 27
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.350270Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 29
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.352402Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 31
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.354499Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 33
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.356607Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 35
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.359699Z DEBUG flesh::modes::lora: Read 3 bytes. Buffer size: 38
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.361747Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 40
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.363820Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 42
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.365888Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 44
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.367915Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 46
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.369999Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 48
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.372067Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 50
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.374206Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 52
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.376237Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 54
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.378294Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 56
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.380289Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 58
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:40.382448Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 59
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.190963Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 60
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.192858Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 62
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.194907Z DEBUG flesh::modes::lora: Read 2 bytes. Buffer size: 64
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.195933Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 65
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.196908Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 66
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.198004Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 67
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.199009Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 68
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.200055Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 69
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.201116Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 70
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.202138Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 71
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.203207Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 72
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.204288Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 73
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.205255Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 74
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.206277Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 75
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.207311Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 76
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.208337Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 77
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.209400Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 78
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.210442Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 79
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.211466Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 80
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.212515Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 81
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.213528Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 82
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.214577Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 83
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.215743Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 84
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.216640Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 85
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.217682Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 86
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.218693Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 87
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.219712Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 88
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.220758Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 89
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.221819Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 90
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.222845Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 91
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.223874Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 92
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.224924Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 93
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.225925Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 94
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.226956Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 95
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.228064Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 96
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.229079Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 97
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.230141Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 98
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.231158Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 99
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.232199Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 100
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.233247Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 101
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.234263Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 102
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.235264Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 103
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.236329Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 104
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.237285Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 105
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.238378Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 106
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.239402Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 107
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.240392Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 108
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.241503Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 109
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.242524Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 110
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.243762Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 111
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.244711Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 112
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.245749Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 113
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.246758Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 114
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.247811Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 115
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.248823Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 116
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.249872Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 117
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.250869Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 118
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.251876Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 119
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.252905Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 120
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.254009Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 121
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.255045Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 122
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.256106Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 123
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.257043Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 124
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.258095Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 125
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
+  2025-09-26T05:01:55.259142Z DEBUG flesh::modes::lora: Read 1 bytes. Buffer size: 126
+    at /home/flora/Projects/flesh/src/modes/lora.rs:163 on tokio-runtime-worker
+
