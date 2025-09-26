@@ -36,10 +36,7 @@ impl Lora {
         debug!("Initializing LoRa with settings: {:?}", settings);
 
         let serial = tokio_serial::new(device.display().to_string(), baud).open_native_async()?;
-        let (reader, writer) = split(serial);
-
-        let config_codec = tokio_util::codec::LinesCodec::new();
-        let mut reader = tokio_util::codec::FramedRead::new(reader, config_codec);
+        let (mut reader, mut writer) = split(serial);
 
         let data_codec = LengthDelimitedCodec::builder()
             .length_field_length(LENGTH_FIELD_SIZE)
@@ -47,12 +44,12 @@ impl Lora {
             .little_endian()
             .new_codec();
 
-        let mut writer = FramedWrite::new(writer, data_codec);
         if configure {
             Self::configure(settings, &mut writer, &mut reader).await?;
         }
 
-        let reader = reader.into_inner();
+        let writer = FramedWrite::new(writer, data_codec.clone());
+        let reader = FramedRead::new(reader, data_codec);
 
         let (writer, reader) = Self::inner(reader, writer);
         Ok(Self { writer, reader })
@@ -76,38 +73,39 @@ impl Lora {
 
     async fn configure(
         settings: LoraSettings,
-        writer: &mut FramedWrite<WriteHalf<SerialStream>, LengthDelimitedCodec>,
-        reader: &mut FramedRead<ReadHalf<SerialStream>, LinesCodec>,
+        writer: &mut WriteHalf<SerialStream>,
+        reader: &mut ReadHalf<SerialStream>,
     ) -> io::Result<()> {
-        // 1. Send the Spread Factor (SF) command
-        let sf_command = format!("AT+SF={}\r\n", settings.spread_factor);
-        writer
-            .send(sf_command.as_bytes().to_vec().into())
-            .await
-            .map_err(|e| io::Error::other(format!("Failed to send SF command: {}", e)))?;
-        Self::wait_for_ok(reader, "SF").await?;
+        todo!()
+        // // 1. Send the Spread Factor (SF) command
+        // let sf_command = format!("AT+SF={}\r\n", settings.spread_factor);
+        // writer
+        //     .send(sf_command.as_bytes().to_vec().into())
+        //     .await
+        //     .map_err(|e| io::Error::other(format!("Failed to send SF command: {}", e)))?;
+        // Self::wait_for_ok(reader, "SF").await?;
 
-        // 2. Send the Frequency command
-        let freq_command = format!("AT+FREQ={}\r\n", settings.frequency_hz);
-        writer
-            .send(freq_command.as_bytes().to_vec().into())
-            .await
-            .map_err(|e| io::Error::other(format!("Failed to send FREQ command: {}", e)))?;
-        Self::wait_for_ok(reader, "FREQ").await?;
+        // // 2. Send the Frequency command
+        // let freq_command = format!("AT+FREQ={}\r\n", settings.frequency_hz);
+        // writer
+        //     .send(freq_command.as_bytes().to_vec().into())
+        //     .await
+        //     .map_err(|e| io::Error::other(format!("Failed to send FREQ command: {}", e)))?;
+        // Self::wait_for_ok(reader, "FREQ").await?;
 
-        // 3. Send the Bandwidth command
-        let bw_command = format!("AT+BW={}\r\n", settings.bandwidth_khz);
-        writer
-            .send(bw_command.as_bytes().to_vec().into())
-            .await
-            .map_err(|e| io::Error::other(format!("Failed to send BW command: {}", e)))?;
-        Self::wait_for_ok(reader, "BW").await?;
+        // // 3. Send the Bandwidth command
+        // let bw_command = format!("AT+BW={}\r\n", settings.bandwidth_khz);
+        // writer
+        //     .send(bw_command.as_bytes().to_vec().into())
+        //     .await
+        //     .map_err(|e| io::Error::other(format!("Failed to send BW command: {}", e)))?;
+        // Self::wait_for_ok(reader, "BW").await?;
 
-        Ok(())
+        // Ok(())
     }
 
     fn inner(
-        mut reader: ReadHalf<SerialStream>,
+        mut reader: FramedRead<ReadHalf<SerialStream>, LengthDelimitedCodec>,
         mut writer: FramedWrite<WriteHalf<SerialStream>, LengthDelimitedCodec>,
     ) -> (UnboundedSender<Vec<u8>>, EventTarget<Vec<u8>>) {
         let (tx, mut rx) = unbounded_channel::<Vec<u8>>();
@@ -131,7 +129,6 @@ impl Lora {
         (tx, target)
     }
 
-    // Arc<tokio::sync::Mutex<FramedWrite<tokio::io::WriteHalf<SerialStream>, LengthDelimitedCodec>>>
     async fn send(stream: &mut FramedWrite<WriteHalf<SerialStream>, LengthDelimitedCodec>, data: &[u8]) -> io::Result<()> {
         let len = data.len();
         if len > MAX_PAYLOAD_SIZE {
@@ -142,51 +139,32 @@ impl Lora {
         }
 
         debug!("Sending frame with length: {}", len);
+
         stream.send(Bytes::copy_from_slice(data)).await.map_err(|e| io::Error::other(e.to_string()))?;
         stream.flush().await.map_err(|e| io::Error::other(e.to_string()))?;
 
         Ok(())
     }
 
-    async fn recv(reader: &mut ReadHalf<SerialStream>) -> io::Result<Vec<u8>> {
-        let mut buffer = Vec::new();
+    async fn recv(reader: &mut FramedRead<ReadHalf<SerialStream>, LengthDelimitedCodec>) -> io::Result<Vec<u8>> {
+        match reader.next().await {
+            Some(Ok(frame)) => {
+                let hex_dump = frame.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
 
-        loop {
-            // Try to read a reasonable chunk of data
-            let mut temp_buf = [0u8; 1024];
+                debug!("Received frame with {} bytes", frame.len());
+                debug!("Hex: {}", hex_dump);
+                debug!("String: {:?}", String::from_utf8_lossy(&frame));
 
-            // Use read() but with a reasonable timeout to accumulate bytes
-            match timeout(Duration::from_millis(50), reader.read(&mut temp_buf)).await {
-                Ok(Ok(0)) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Connection closed")),
-                Ok(Ok(n)) => {
-                    buffer.extend_from_slice(&temp_buf[..n]);
-                    debug!("Read {} bytes. Buffer size: {}", n, buffer.len());
-
-                    // If we got a substantial amount of data, try to process immediately
-                    // Otherwise, try to accumulate a bit more
-                    if n < 10 && buffer.len() < 64 {
-                        // Try one more quick read to see if more data is coming
-                        tokio::time::sleep(Duration::from_millis(1)).await;
-                        continue;
-                    }
-                }
-                Ok(Err(e)) if e.kind() == io::ErrorKind::WouldBlock => {
-                    // No data available right now, but we might have data in buffer
-                    if buffer.is_empty() {
-                        continue;
-                    }
-                }
-                Ok(Err(e)) => return Err(e),
-                Err(_) => {
-                    // Timeout - process what we have if anything
-                    if buffer.is_empty() {
-                        continue;
-                    }
-                }
+                Ok(frame.to_vec())
             }
-
-            // Process frames from buffer...
-            // (rest of your frame processing logic stays the same)
+            Some(Err(e)) => {
+                debug!("Frame decode error: {}", e);
+                Err(io::Error::other(format!("Frame decode error: {}", e)))
+            }
+            None => {
+                debug!("Stream ended");
+                Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Stream ended"))
+            }
         }
     }
 }
