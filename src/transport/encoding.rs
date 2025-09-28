@@ -1,50 +1,40 @@
 use {
+    crate::transport::status::Status,
     chacha20poly1305::{
         ChaCha20Poly1305,
         aead::{Aead, KeyInit},
     },
     ed25519_dalek::{Signature, SigningKey, VerifyingKey, ed25519::signature::Signer},
-    fl_uid::Fluid,
     postcard,
     rand_core::{OsRng, RngCore},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, fmt::Debug, time::SystemTime},
+    std::{
+        collections::HashMap,
+        fmt::{Debug, Display},
+        time::SystemTime,
+    },
     thiserror::Error,
+    uuid::Uuid,
     x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, StaticSecret},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FLESHMessage {
     pub version: u16,
-    pub message_type: MessageType,
-    pub target: Option<Fluid>,
-    pub sender: Option<Fluid>,
+    pub target: Option<Uuid>,
+    pub sender: Option<Uuid>,
     pub timestamp: u64,
     pub headers: HashMap<String, Vec<u8>>,
     pub body: Vec<u8>,
     pub signature: Option<Vec<u8>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum MessageType {
-    Data { status: u16 },
-    Routing(RoutingMessage),
-    Heartbeat,
-    Ack { message_id: Fluid },
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum RoutingMessage {
-    Announce(Fluid),
-    Request { asking: Fluid },
-    Response { giving: Fluid, key: Vec<u8> },
+    pub status: Status,
 }
 
 impl FLESHMessage {
-    pub fn new(message_type: MessageType) -> Self {
+    pub fn new(status: Status) -> Self {
         Self {
+            status,
             version: env!("CARGO_PKG_VERSION").split_once('.').unwrap().0.parse().unwrap(),
-            message_type,
             target: None,
             sender: None,
             timestamp: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
@@ -54,22 +44,18 @@ impl FLESHMessage {
         }
     }
 
-    pub fn data(status: u16) -> Self { Self::new(MessageType::Data { status }) }
-
-    pub fn routing(routing_msg: RoutingMessage) -> Self { Self::new(MessageType::Routing(routing_msg)) }
-
-    pub fn with_target(mut self, target: Fluid) -> Self {
+    pub fn with_target(mut self, target: Uuid) -> Self {
         self.target = Some(target);
         self
     }
 
-    pub fn with_sender(mut self, sender: Fluid) -> Self {
+    pub fn with_sender(mut self, sender: Uuid) -> Self {
         self.sender = Some(sender);
         self
     }
 
-    pub fn with_header(mut self, key: String, value: Vec<u8>) -> Self {
-        self.headers.insert(key, value);
+    pub fn with_header(mut self, key: impl Display, value: impl Into<Vec<u8>>) -> Self {
+        self.headers.insert(key.to_string(), value.into());
         self
     }
 
@@ -163,12 +149,13 @@ impl FLESHMessage {
         Ok(self)
     }
 
-    pub fn is_ok(&self) -> bool {
-        match &self.message_type {
-            MessageType::Data { status } => *status == 0,
-            _ => true,
-        }
+    pub fn is_ok(&self) -> bool { self.status.is_ok() }
+
+    /// If the target is broadcast, or targets the given identity
+    pub fn for_id(&self, id: impl Identity) -> bool {
+        self.target == Some(id.id()) || self.target == None
     }
+
 }
 
 #[derive(Debug, Error)]
@@ -192,12 +179,31 @@ pub enum MessageError {
 }
 
 pub trait Identity {
-    fn id(&self) -> Fluid;
+    fn id(&self) -> Uuid;
     fn key(&self) -> &SigningKey;
 }
 
-impl Identity for (Fluid, SigningKey) {
-    fn id(&self) -> Fluid { self.0 }
+impl Identity for (Uuid, SigningKey) {
+    fn id(&self) -> Uuid { self.0 }
 
     fn key(&self) -> &SigningKey { &self.1 }
+}
+
+impl Serialize for Status {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        u8::serialize(&self.as_u8(), serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Status {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let int = u8::deserialize(deserializer)?;
+        Ok(Status::STANDARD.into_iter().find(|v| v.as_u8() == int).unwrap_or(Status::Custom(int)))
+    }
 }

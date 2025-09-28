@@ -6,7 +6,6 @@ use {
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     },
-    fl_uid::Fluid,
     flesh::{
         modes::lora::{Lora, LoraSettings},
         transport::{PacketTransport, encoding::FLESHMessage, network::Network},
@@ -82,7 +81,7 @@ impl App {
                         .map(|h| format!("{v}@{}", String::from_utf8_lossy(&h.stdout).to_string().trim()))
                         .ok()
                 })
-                .unwrap_or(Fluid::new().to_string()),
+                .unwrap_or(Uuid::new_v4().to_string()),
         };
 
         s.send.send(Message::Join(s.name.to_string())).unwrap();

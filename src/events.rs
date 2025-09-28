@@ -1,7 +1,6 @@
-use tracing::debug;
+use uuid::Uuid;
 
 use {
-    fl_uid::Fluid,
     futures::Stream,
     std::{
         collections::HashMap,
@@ -21,7 +20,7 @@ use {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct EventTarget<T: Debug> {
-    listeners: Arc<RwLock<HashMap<Fluid, Arc<Subscription<T>>>>>,
+    listeners: Arc<RwLock<HashMap<Uuid, Arc<Subscription<T>>>>>,
     sender: Arc<mpsc::UnboundedSender<Arc<T>>>,
     receiver: Arc<Mutex<mpsc::UnboundedReceiver<Arc<T>>>>,
 }
@@ -72,13 +71,11 @@ impl<T: Debug> EventTarget<T> {
 }
 
 impl<T: Debug> Default for EventTarget<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 pub struct Subscription<T: Debug> {
-    id: Fluid,
+    id: Uuid,
     handler: Box<dyn Fn(Arc<T>) + Send + Sync>,
     to: *const EventTarget<T>, // Using raw pointer to avoid lifetime issues
 }
@@ -94,7 +91,7 @@ unsafe impl<T: Debug> Sync for Subscription<T> {}
 
 impl<T: Debug> Subscription<T> {
     pub fn new(to: &EventTarget<T>, handler: impl Fn(Arc<T>) + Send + Sync + 'static) -> Self {
-        Self { id: Fluid::new(), handler: Box::new(handler), to: to as *const _ }
+        Self { id: Uuid::new_v4(), handler: Box::new(handler), to: to as *const _ }
     }
 
     pub fn off(&self) {
@@ -106,9 +103,7 @@ impl<T: Debug> Subscription<T> {
     }
 
     #[instrument(level = "trace")]
-    pub(crate) fn update(&self, v: Arc<T>) {
-        (self.handler)(v)
-    }
+    pub(crate) fn update(&self, v: Arc<T>) { (self.handler)(v) }
 }
 
 impl<T: Debug> Drop for Subscription<T> {
@@ -143,15 +138,11 @@ where
 impl<T: Debug> Deref for EventStream<T> {
     type Target = UnboundedReceiver<Arc<T>>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.ch
-    }
+    fn deref(&self) -> &Self::Target { &self.ch }
 }
 
 impl<T: Debug> Stream for EventStream<T> {
     type Item = Arc<T>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.ch.poll_recv(cx)
-    }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> { self.ch.poll_recv(cx) }
 }

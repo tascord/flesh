@@ -5,7 +5,7 @@ use {
     futures::{SinkExt, StreamExt},
     std::{io, ops::Deref, path::PathBuf, time::Duration},
     tokio::{
-        io::{AsyncReadExt, ReadHalf, WriteHalf, split},
+        io::{ReadHalf, WriteHalf, split},
         spawn,
         sync::mpsc::{UnboundedSender, unbounded_channel},
         time::timeout,
@@ -55,7 +55,10 @@ impl Lora {
         Ok(Self { writer, reader })
     }
 
-    async fn wait_for_ok(reader: &mut FramedRead<ReadHalf<SerialStream>, LinesCodec>, command_name: &str) -> io::Result<()> {
+    async fn _wait_for_ok(
+        reader: &mut FramedRead<ReadHalf<SerialStream>, LinesCodec>,
+        command_name: &str,
+    ) -> io::Result<()> {
         match timeout(Duration::from_secs(5), reader.next()).await {
             Ok(Some(Ok(response))) => {
                 if response.trim() == "OK" {
@@ -72,9 +75,9 @@ impl Lora {
     }
 
     async fn configure(
-        settings: LoraSettings,
-        writer: &mut WriteHalf<SerialStream>,
-        reader: &mut ReadHalf<SerialStream>,
+        _settings: LoraSettings,
+        _writer: &mut WriteHalf<SerialStream>,
+        _reader: &mut ReadHalf<SerialStream>,
     ) -> io::Result<()> {
         todo!()
         // // 1. Send the Spread Factor (SF) command
