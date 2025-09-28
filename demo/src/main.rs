@@ -4,11 +4,11 @@ use {
     crossterm::{
         event::{self, Event, KeyCode, KeyModifiers},
         execute,
-        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     },
     flesh::{
         modes::lora::{Lora, LoraSettings},
-        transport::{PacketTransport, encoding::FLESHMessage, network::Network},
+        transport::{encoding::FLESHMessage, network::Network, PacketTransport},
     },
     futures::StreamExt,
     futures_signals::signal::Mutable,
@@ -25,9 +25,9 @@ use {
     },
     tokio::{
         spawn,
-        sync::mpsc::{UnboundedSender, unbounded_channel},
+        sync::mpsc::{unbounded_channel, UnboundedSender},
     },
-    tracing_subscriber::{field::debug, filter::LevelFilter},
+    tracing_subscriber::{field::debug, filter::LevelFilter}, uuid::Uuid,
 };
 
 mod widgets;
@@ -118,7 +118,7 @@ impl App {
 
         spawn(async move {
             while let Some(msg) = rx.recv().await {
-                let encoded = FLESHMessage::new(flesh::transport::encoding::MessageType::Data { status: 100 })
+                let encoded = FLESHMessage::new(flesh::transport::status::Status::Acknowledge)
                     .with_body(serde_json::to_vec(&msg).unwrap());
 
                 msgs.clone().set({
