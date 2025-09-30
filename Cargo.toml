@@ -1,5 +1,3 @@
 [workspace]
 resolver = "3"
-members = [
-    "crates/flesh",
-]
+members = ["crates/flesh", "examples/demo_chat-app", "examples/network"]
