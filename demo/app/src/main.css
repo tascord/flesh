@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@layer components {
+    a:focus-visible,a:hover {
+        color: lime;
+    }
+
+    input:focus-visible,textarea:focus-visible {
+        outline: 0;
+        border-bottom: 1px solid white;
+    }
+}

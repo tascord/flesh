@@ -1,234 +1,190 @@
 use {
-    crate::widgets::{MessageList, Textbox},
-    anyhow::{Context, Result},
-    crossterm::{
-        event::{self, Event, KeyCode, KeyModifiers},
-        execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    },
     flesh::{
         modes::lora::{Lora, LoraSettings},
-        transport::{encoding::FLESHMessage, network::Network, PacketTransport},
+        transport::{PacketTransport, encoding::FLESHMessage, network::Network},
     },
-    futures::StreamExt,
-    futures_signals::signal::Mutable,
-    itertools::Itertools,
-    ratatui::prelude::*,
+    futures::{SinkExt, StreamExt},
     serde::{Deserialize, Serialize},
-    std::{
-        env,
-        fs::OpenOptions,
-        io::{self, Stdout},
-        path::Path,
-        process::Command,
-        time::Duration,
-    },
+    std::{env, path::Path, time::Duration},
     tokio::{
-        spawn,
-        sync::mpsc::{unbounded_channel, UnboundedSender},
+        net::{TcpListener, TcpStream},
+        select, spawn,
+        sync::mpsc::{UnboundedSender, unbounded_channel},
     },
-    tracing_subscriber::{field::debug, filter::LevelFilter}, uuid::Uuid,
+    tokio_tungstenite::{accept_async, tungstenite::protocol::Message},
+    tracing::{info, warn},
+    tracing_subscriber::filter::LevelFilter,
+    uuid::Uuid,
 };
 
-mod widgets;
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum Message {
-    Text { author: String, content: String },
+pub enum ChatMessage {
+    Text { author: String, content: String, channel: String },
     Join(String),
+    Channels(Vec<String>),
+    CurrentServer(String),
 }
 
-pub struct App {
-    messages: Mutable<Vec<Message>>,
-    send: UnboundedSender<Message>,
-    textbox_state: (String, usize),
-    should_quit: bool,
-    name: String,
-}
-
-impl App {
-    pub async fn new() -> Self {
-        tracing_subscriber::fmt()
-            .with_thread_names(true)
-            .with_level(true)
-            .with_max_level(LevelFilter::TRACE)
-            .with_writer(OpenOptions::new().create(true).write(true).truncate(true).open("./demo.log").unwrap())
-            .pretty()
-            .with_ansi(false)
-            .init();
-
-        let lora = Lora::new(
-            Path::new(&env::var("LORA").expect("No LoRa env")).to_path_buf(),
-            9600,
-            LoraSettings { spread_factor: 9, frequency_hz: 915_000_000, bandwidth_khz: 10 },
-            false,
-        )
-        .await
-        .expect("Failed to setup LoRa");
-
-        let msgs = Mutable::<Vec<Message>>::new(Vec::new());
-
-        let s = Self {
-            messages: msgs.clone(),
-            send: Self::lora(lora, msgs.clone()),
-            textbox_state: Default::default(),
-            should_quit: false,
-            name: std::env::var("USER")
-                .ok()
-                .and_then(|v| {
-                    Command::new("hostname")
-                        .output()
-                        .map(|h| format!("{v}@{}", String::from_utf8_lossy(&h.stdout).to_string().trim()))
-                        .ok()
-                })
-                .unwrap_or(Uuid::new_v4().to_string()),
-        };
-
-        s.send.send(Message::Join(s.name.to_string())).unwrap();
-        s
-    }
-
-    pub fn lora(lora: Lora, msgs: Mutable<Vec<Message>>) -> UnboundedSender<Message> {
-        let (tx, mut rx) = unbounded_channel::<Message>();
-
-        spawn({
-            let msgs = msgs.clone();
-            let lora = lora.clone();
-            async move {
-                let msgs = msgs.clone();
-                Network::new(lora)
-                    .as_stream()
-                    .filter_map(|m| async move { serde_json::from_slice(&m.body).ok() })
-                    .for_each({
-                        let msgs = msgs.clone();
-                        move |m| {
-                            let msgs = msgs.clone();
-                            async move {
-                                msgs.clone().set({
-                                    let mut l = msgs.get_cloned();
-                                    l.push(m);
-                                    l
-                                })
-                            }
-                        }
-                    })
-                    .await
-            }
-        });
-
-        spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                let encoded = FLESHMessage::new(flesh::transport::status::Status::Acknowledge)
-                    .with_body(serde_json::to_vec(&msg).unwrap());
-
-                msgs.clone().set({
-                    let mut l = msgs.get_cloned();
-                    l.push(msg);
-                    l.dedup();
-                    l
-                });
-
-                lora.send(&encoded.serialize().unwrap()).await.unwrap();
-            }
-        });
-
-        tx
-    }
-
-    pub fn tick(&mut self, f: &mut Frame<'_>) -> anyhow::Result<()> {
-        if event::poll(Duration::from_millis(50)).context("event poll failed")? {
-            if let Event::Key(key) = event::read().context("event read failed")? {
-                match key.code {
-                    // Quit
-                    KeyCode::Esc => {
-                        self.should_quit = true;
-                    }
-
-                    // Send
-                    KeyCode::Enter if !self.textbox_state.0.trim().is_empty() => {
-                        self.send
-                            .send(Message::Text { author: self.name.clone(), content: self.textbox_state.0.clone() })?;
-                        self.textbox_state = (String::new(), 0);
-                    }
-
-                    KeyCode::Backspace => {
-                        if self.textbox_state.1 > 0 {
-                            self.textbox_state.0.remove(self.textbox_state.1 - 1);
-                            self.textbox_state.1 -= 1;
-                        }
-                    }
-                    KeyCode::Home | KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        self.textbox_state.1 = 0;
-                    }
-                    KeyCode::End | KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        self.textbox_state.1 = self.textbox_state.0.len();
-                    }
-                    KeyCode::Left => {
-                        if self.textbox_state.1 > 0 {
-                            self.textbox_state.1 -= 1;
-                        }
-                    }
-                    KeyCode::Right => {
-                        if self.textbox_state.1 < self.textbox_state.0.len() {
-                            self.textbox_state.1 += 1;
-                        }
-                    }
-                    KeyCode::Delete => {
-                        self.textbox_state.0.remove(self.textbox_state.1);
-                    }
-                    KeyCode::Char(c) => {
-                        self.textbox_state.0.insert(self.textbox_state.1, c);
-                        self.textbox_state.1 += 1;
-                    }
-
-                    _ => {}
-                }
-            }
-        }
-
-        let binding = Layout::new(Direction::Vertical, [Constraint::Fill(1), Constraint::Length(3)]).split(f.area());
-        let (lay_list, lay_input) = binding.into_iter().collect_tuple().unwrap();
-
-        f.render_widget(MessageList::new(self.messages.get_cloned()), *lay_list);
-        f.render_stateful_widget(Textbox::new("Compose"), *lay_input, &mut self.textbox_state);
-        std::thread::sleep(Duration::from_millis(10));
-
-        Ok(())
-    }
-}
+const CHANNELS: &[&str] = &["general", "flesh", "silly"];
+const PING_INTERVAL: Duration = Duration::from_secs(5);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let mut terminal = setup_terminal().context("setup failed")?;
-    terminal.clear().unwrap();
-    run(&mut terminal, App::new().await).await.context("run failed")?;
-    restore_terminal(&mut terminal).context("restore terminal failed")?;
-    Ok(())
-}
+    tracing_subscriber::fmt()
+        .with_thread_names(true)
+        .with_level(true)
+        .with_max_level(LevelFilter::INFO)
+        .pretty()
+        .with_ansi(true)
+        .init();
 
-fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
-    let mut stdout = io::stdout();
-    enable_raw_mode().context("failed to enable raw mode")?;
-    execute!(stdout, EnterAlternateScreen).context("unable to enter alternate screen")?;
-    Terminal::new(CrosstermBackend::new(stdout)).context("creating terminal failed")
-}
+    let lora = Lora::new(
+        Path::new(&env::var("LORA").expect("No LoRa env")).to_path_buf(),
+        9600,
+        LoraSettings { spread_factor: 9, frequency_hz: 915_000_000, bandwidth_khz: 10 },
+        false,
+    )
+    .await
+    .expect("Failed to setup LoRa");
 
-fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-    disable_raw_mode().context("failed to disable raw mode")?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen).context("unable to switch to main screen")?;
-    terminal.show_cursor().context("unable to show cursor")
-}
+    let network = Network::new(lora.clone());
+    let node_id = network.id.clone();
 
-async fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -> Result<()> {
-    loop {
-        terminal.draw(|f| {
-            app.tick(f).unwrap();
-        })?;
+    let (to_lora, mut lora_handler) = unbounded_channel::<ChatMessage>();
+    let (to_ws, ws_handler) = tokio::sync::broadcast::channel::<ChatMessage>(10);
 
-        if app.should_quit {
-            break;
+    let addr = "127.0.0.1:8080";
+    let listener = TcpListener::bind(addr).await?;
+    info!("Bound web server to 127.0.0.1:8080");
+
+    // Network -> WS
+    spawn({
+        let to_ws = to_ws.clone();
+        async move {
+            let to_ws = to_ws.clone();
+            network
+                .as_stream()
+                .filter_map(|m| async move { serde_json::from_slice(&m.body).ok() })
+                .for_each({
+                    let to_ws = to_ws.clone();
+                    move |m| {
+                        let to_ws = to_ws.clone();
+                        async move {
+                            let _ = to_ws.send(m);
+                        }
+                    }
+                })
+                .await
         }
+    });
+
+    // WS -> Network
+    spawn(async move {
+        while let Some(msg) = lora_handler.recv().await {
+            let encoded = FLESHMessage::new(flesh::transport::status::Status::Acknowledge)
+                .with_body(serde_json::to_vec(&msg).unwrap());
+
+            // Also feedback messages into the ws'.
+            let _ = to_ws.send(msg);
+            lora.send(&encoded.serialize().unwrap()).await.unwrap();
+        }
+    });
+
+    while let Ok((stream, _)) = listener.accept().await {
+        tokio::spawn(handle_connection(stream, node_id.clone(), ws_handler.resubscribe(), to_lora.clone()));
     }
 
     Ok(())
+}
+
+async fn handle_connection(
+    stream: TcpStream,
+    id: Uuid,
+    mut ws_handler: tokio::sync::broadcast::Receiver<ChatMessage>,
+    to_lora: UnboundedSender<ChatMessage>,
+) {
+    let peer_addr = match stream.peer_addr() {
+        Ok(addr) => addr.to_string(),
+        Err(_) => "unknown address".to_string(),
+    };
+
+    info!("New TCP connection from: {}", peer_addr);
+    let ws_stream = match accept_async(stream).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!("Error during WebSocket handshake from {}: {}", peer_addr, e);
+            return;
+        }
+    };
+
+    info!("WebSocket connection established with: {}", peer_addr);
+    let (mut sender, mut reader) = ws_stream.split();
+
+    // Announce ID
+    let _ =
+        sender.send(Message::Text(serde_json::to_string(&ChatMessage::CurrentServer(id.to_string())).unwrap().into())).await;
+
+    // Announce Channels
+    let _ = sender
+        .send(Message::Text(
+            serde_json::to_string(&ChatMessage::Channels(CHANNELS.iter().map(|v| v.to_string()).collect::<Vec<_>>()))
+                .unwrap()
+                .into(),
+        ))
+        .await;
+
+    info!("Sent pleasentries: {}", peer_addr);
+    let mut ping_timer = tokio::time::interval(PING_INTERVAL);
+
+    loop {
+        select! {
+            res = reader.next() => {
+                 match res {
+                    Some(Ok(msg)) => {
+                        if msg.is_close() {
+                            info!("WebSocket connection closed gracefully by peer: {}", peer_addr);
+                            return;
+                        }
+                         if let Ok(ref m) = serde_json::de::from_slice::<ChatMessage>(&msg.into_data()) {
+                            match m {
+                                ChatMessage::Text { .. } => {
+                                    let _ = to_lora.send(m.clone());
+                                }
+                                ChatMessage::Join(..) => {
+                                    let _ = to_lora.send(m.clone());
+                                }
+                                ChatMessage::Channels(_) | ChatMessage::CurrentServer(_) => {
+                                    warn!("Client {} sent server-only message type: {:?}", peer_addr, m);
+                                }
+                            }
+                        }
+                    }
+                    Some(Err(e)) => {
+                        warn!("Error receiving message from {}: {}", peer_addr, e);
+                    }
+                    None => {
+                        info!("WebSocket stream ended for: {}", peer_addr);
+                        return; // <-- EXIT on stream end (disconnect)
+                    }
+                }
+            },
+            msg = ws_handler.recv() => {
+                // Handle broadcast Lagged error by skipping, as it's a broadcast
+                if let Ok(msg) = msg {
+                    if let Ok(text) = serde_json::to_string(&msg) {
+                        if let Err(e) = sender.send(Message::Text(text.into())).await {
+                            warn!("Failed to send broadcast to {}: {}", peer_addr, e);
+                            return; // <-- EXIT on send error (broken pipe)
+                        }
+                    }
+                }
+            },
+            _ = ping_timer.tick() => {
+                if let Err(e) = sender.send(Message::Ping(vec![].into())).await {
+                    warn!("Failed to send PING to {}: {}", peer_addr, e);
+                    return; // <-- EXIT on failed ping
+                }
+            }
+        }
+    }
 }
