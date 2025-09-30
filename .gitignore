@@ -1,3 +1,5 @@
 .devenv/
 **/target
-**/*.log
+**/*.log.devenv
+.devenv
+result
