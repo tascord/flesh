@@ -153,7 +153,7 @@ impl FLESHMessage {
 
     /// If the target is broadcast, or targets the given identity
     pub fn for_id(&self, id: impl Identity) -> bool {
-        self.target == Some(id.id()) || self.target == None
+        self.target == Some(id.id()) || self.target.is_none()
     }
 
 }

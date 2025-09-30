@@ -1,7 +1,7 @@
 use {
     flesh::{
         modes::lora::{Lora, LoraSettings},
-        transport::network::{self, Network},
+        transport::network::Network,
     },
     futures::StreamExt,
     std::path::Path,
