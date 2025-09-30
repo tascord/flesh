@@ -8,7 +8,7 @@
 <br><br>
 
 ## What is?
-This is a **VERY** Work In Progress LoRa based communication stack. If you want to play around with it feel free, however the docs are lacking massively, so I'd invite you to take inspiration from the [demo](./demo) chat project.
+This is a **VERY** Work In Progress LoRa based communication stack. If you want to play around with it feel free, however the docs are lacking massively, so I'd invite you to take inspiration from the [demo](./examples/chat-vite/) chat project.
 
 ## THE IDEA
 A stack that manages communication over LoRa or other long range, low power systems. The goal is to host applications using this communication system locally on a hotspot on a cheap device like an RPI, or adjacent, to provide communication in rural areas or during internet outages.
