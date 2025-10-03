@@ -181,20 +181,25 @@ impl App {
             std::thread::spawn(move || {
 
             let network_ptr = &network as *const Network as *mut c_void;
-                macro_rules!  send_if_error{
-                    ($val:expr) => {
+                macro_rules! send_if_error {
+                    ($msg:expr, $val:expr) => {
                         match $val {
                             Ok(v) => v,
                             Err(e) => {
-                                let _ = stream.send(Message::ErrorLoading(anyhow::anyhow!("Failed to ...: {}", e).to_string()));
+                                let _ = stream.send(Message::ErrorLoading(anyhow::anyhow!(concat!("Failed to ", $msg, ": {}"), e).to_string()));
                                 return;
                             }
                         }
-
                     };
                 }
-                let func:Symbol<unsafe extern "C" fn(*mut c_void, usize)> = send_if_error!(lib.get(b"__flesh_entrypoint"));
-                let mut signals = send_if_error!(Signals::new([SIGINT, SIGTERM, SIGQUIT, SIGSEGV]));
+                let func: Symbol<unsafe extern "C" fn(*mut c_void, usize)> = send_if_error!(
+                    "load entrypoint symbol (__flesh_entrypoint) from dynamic library",
+                    lib.get(b"__flesh_entrypoint")
+                );
+                let mut signals = send_if_error!(
+                    "create signal handler (SIGINT, SIGTERM, SIGQUIT, SIGSEGV)",
+                    Signals::new([SIGINT, SIGTERM, SIGQUIT, SIGSEGV])
+                );
                 let stream_a = stream.clone();
                 std::thread::spawn(move || {
                     for sig in signals.forever() {
