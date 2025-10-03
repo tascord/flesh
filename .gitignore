@@ -1,5 +1,6 @@
 .devenv/
 **/target
 **/*.log.devenv
-.devenv
+.direnv
+
 result
