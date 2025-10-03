@@ -99,7 +99,7 @@ impl Config {
                     _ => {}
                 }
             }   
-            if apps.len() == 0 {
+            if apps.is_empty() {
                 println!("{}", "✔ All apps have been stopped.".bright_green().bold());
                 break;
             }
