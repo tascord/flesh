@@ -211,8 +211,9 @@ impl App {
                 while let Ok(msg) = stream.blocking_recv(){
                     match msg {
                         Message::QuitUrAss => break,
-                        _ => 
-                        func(network_ptr, port)
+                        _ => {
+                            func(network_ptr, port);
+                        }
                     }
                 }
                 
